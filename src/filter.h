@@ -1,12 +1,15 @@
 #include <stdint.h>
 
 struct config_t{
-	uint32_t drop;
-	uint32_t corrupt_packets;
-	uint32_t corrupt_bytes;
-    uint32_t truncate_len;
+	unsigned long drop;
+	unsigned long corrupt_packets;
+	unsigned long corrupt_bytes;
+    unsigned long truncate_len;
+	unsigned long bandwidth;
 };
 
 bool filter(char *data, int &len);
 
+#ifndef CONFIG_HERE
 extern config_t config;
+#endif

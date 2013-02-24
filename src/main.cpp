@@ -1,4 +1,5 @@
 #include <sys/epoll.h>
+#include <signal.h>
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -15,6 +16,11 @@
 
 #include "filter.h"
 #include "config.h"
+
+
+typedef std::deque<std::string> queue_t;
+static bool reload_config = true;
+
 
 void usage(){
 	fprintf(stderr, "Usage: interface_a interface_b\n");
@@ -92,23 +98,33 @@ mac_t get_mac(socket_t sock, const char* iface){
 }
 
 
-typedef std::deque<std::string> queue_t;
-
-
-void hexprint(const char *buf){
-	printf("%hhx %hhx %hhx %hhx %hhx %hhx\n", 
-		   buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
+void signal_reload_handler(int signum) {
+	printf("Caught signal %d\n",signum);
+	reload_config = true;
+	return;
 }
 
+
+int cmp_times (const timespec &a, const timespec &b) {
+	if (a.tv_sec == b.tv_sec){
+		return (a.tv_nsec == b.tv_nsec) ? 0 : ((a.tv_nsec > b.tv_nsec) ? 1 : -1);
+	}
+	return (a.tv_sec == b.tv_sec) ? 0 : ((a.tv_sec > b.tv_sec) ? 1 : -1);
+ }
+
+static const size_t NS_PER_S = 1000000000;
 
 int main(int argc, const char ** argv){
 	if (argc != 3) usage();
 	if (geteuid()) usage();
-	load_config();	
+
 	socket_t write_sock = socket(PF_PACKET, SOCK_RAW, ETH_P_ALL);
 
 	queue_t a_queue;
 	queue_t b_queue;
+
+	timespec a_queue_time = {0, 0};
+	timespec b_queue_time = {0, 0};
 
 	socket_t a_sock = get_raw_iface(argv[1]);
 	mac_t a_mac = get_mac(a_sock, argv[1]);
@@ -119,11 +135,25 @@ int main(int argc, const char ** argv){
 	add_reader(poll, a_sock);
 	add_reader(poll, b_sock);
 
+	signal(SIGHUP, signal_reload_handler);
+
 	char in_data[1600];
 	epoll_event events[4];
 	while (1){
-		listen_write(poll, a_sock, !a_queue.empty());
-		listen_write(poll, b_sock, !b_queue.empty());
+		
+		if (reload_config){
+			load_config();	
+			reload_config = false;
+			a_queue_time = {0, 0};
+			b_queue_time = {0, 0};
+		}
+		timespec this_tick;
+		clock_gettime(CLOCK_MONOTONIC, &this_tick);
+		bool write_to_a = (!a_queue.empty()) && (cmp_times(this_tick, a_queue_time) > 0);
+		bool write_to_b = (!b_queue.empty()) && (cmp_times(this_tick, b_queue_time) > 0);
+		
+		listen_write(poll, a_sock, write_to_a);
+		listen_write(poll, b_sock, write_to_b);
 
 		int count = epoll_wait(poll, events, 4, -1);
 		if (count == 0) fprintf(stderr, "Got no events?!\n");
@@ -135,10 +165,19 @@ int main(int argc, const char ** argv){
 				std::string &data = *(queue.begin());
 				int len = write(sock, data.c_str(), data.size());
 				if (len != data.size()){
-					printf("Not all bytes written: %i,  %lu\n", 
+					fprintf(stderr, "Not all bytes written: %i,  %lu\n", 
 						   len, data.size());
 				}
 				queue.pop_front();
+				if (config.bandwidth){
+					timespec &target_sleep = ((sock == a_sock) 
+											  ? a_queue_time 
+											  : b_queue_time);
+					size_t ns_to_sleep = config.bandwidth * len;
+					target_sleep = this_tick;
+					target_sleep.tv_sec += ns_to_sleep / NS_PER_S;
+					target_sleep.tv_nsec += ns_to_sleep % NS_PER_S;
+				}
 			}else{
 				queue_t &queue = (sock == a_sock) ? b_queue : a_queue;
 				mac_t &mac = (sock == a_sock) ? a_mac : b_mac;
@@ -148,7 +187,7 @@ int main(int argc, const char ** argv){
 					abort();
 				}
 				if (strncmp(in_data, mac.address, 6) 
-				    && strncmp(&in_data[6], mac.address, 6)){
+					&& strncmp(&in_data[6], mac.address, 6)){
 					if (filter(in_data, len)){
 						queue.emplace_back(in_data, len);
 					}

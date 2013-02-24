@@ -1,6 +1,12 @@
 #include <stdint.h>
+#include <stdio.h>
 #include <unistd.h>
+#define CONFIG_HERE 
+
 #include "filter.h"
+
+config_t config;
+
 
 static unsigned long x=123456789, 
 					 y=362436069, 
@@ -20,7 +26,6 @@ bool rand_test(unsigned long cutoff){
 }
 
 
-static config_t config;
 
 #define MIN(x, y) (x > y) ? y : x
 
@@ -38,6 +43,7 @@ bool drop_packet(char *data, int &len){
 	if (rand_test(config.drop)){
 		return false;
 	}
+	return true;
 }
 
 

@@ -1,0 +1,7 @@
+{
+	"drop_percent": 0,
+	"corrupt_packet_percent": 0,
+	"corrupt_packet_bytes": 0,
+	"truncate_len": 0,
+	"bandwidth": 2048
+}
