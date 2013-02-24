@@ -1,2 +1,42 @@
-<html>
-HI
+<!DOCTYPE html>
+<head>
+	<link rel="stylesheet" type="text/css" href="/static/base.css">
+
+</head>
+<body>
+	<img src="/static/logo.png"/>
+	<div><img src="/static/divider.png"/></div>
+	<form action="/set" method="POST">
+		<div>
+			Drop 
+			<input type="text" name="drop_percent" 
+				   value="{{ config.drop_percent }}"/> 
+			% of packets
+		</div>
+		<div>
+			Corrupt up to 
+			<input type="text" name="corrupt_packet_bytes" 
+					value="{{ config.corrupt_packet_bytes }}"/> 
+			bytes of 
+			<input type="text" name="corrupt_packet_percent" 
+					value="{{ config.corrupt_packet_percent }}"/> 
+			% of packets
+		</div>
+		<div>
+			Truncate packets to 
+			<input type="text" name="truncate_len" 
+					value="{{ config.truncate_len }}"/> 
+			bytes (0 = no truncation)
+		</div>
+		<div>
+			Limit bandwidth to
+			<input type="text" name="bandwidth" 
+					value="{{ config.bandwidth }}"/> 
+			KiB/s (0 = no limit)
+		</div>
+		<div class="submit-row">
+			<button type="submit">Update</button>
+		</div>
+	</form>
+	<div><img src="/static/divider.png"/></div>
+</body>
