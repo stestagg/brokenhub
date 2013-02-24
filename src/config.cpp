@@ -1,7 +1,7 @@
 #include "filter.h"
 #include "parser_UTF8.h"
 
-static const char *CONFIG_PATH = "config.json";
+static const char *CONFIG_PATH = "/etc/brokenhub.conf";
 
 #define UIMAX(size) (size)(((1ull << ((sizeof(size) * 8)-1)) - 1) | ((0xffull << ((sizeof(size) * 8) - 1))))
 

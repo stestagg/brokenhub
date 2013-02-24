@@ -1,0 +1,37 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          brokenhub
+# Required-Start:    $network
+# Required-Stop:     $network
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: Provide pass-through hub functionality
+# Description:       Brokenhub acts as a two-port hub that may be configured
+#                    to drop, corrupt, and limit packets
+### END INIT INFO
+# -*- coding: utf-8 -*-
+# Debian init.d script for brokenhub
+
+set -e
+
+CMD=/usr/bin/brokenhub
+NAME=brokenhub
+
+. /lib/lsb/init-functions
+
+case "$1" in
+  start)
+    start-stop-daemon -x /usr/bin/brokenhub -b -N -10 -m -p /var/run/brokenhub.run -S -- eth0 eth1
+  ;;
+  stop)
+    start-stop-daemon -x /usr/bin/brokenhub -p /var/run/brokenhub.run -K
+  ;;
+  reload|force-reload)
+    start-stop-daemon -x /usr/bin/brokenhub -p /var/run/brokenhub.run --signal HUP -K
+  ;;
+  *)
+    echo "Usage: /etc/init.d/$NAME {start|stop|reload}" >&2
+    exit 2
+  ;;
+esac
+
