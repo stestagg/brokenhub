@@ -1,6 +1,0 @@
-{
-	"Hello" : "world",
-	this : "should",
-	be : [ "a", "c", "c", "e", "p", "t", "e", "d" ],
-	true : "libJSONpp, rocks", 'but': "that can't be helped"
-}
